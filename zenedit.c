@@ -1,38 +1,28 @@
-#include <ctype.h>
-#include <stdio.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <termios.h>
+/*** INCLUDES ***/
+#include "zenedit.h"
 
-struct termios orig_termios;
-void disableRawMode() {
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &orig_termios);
-}
+/*** DEFINES ***/
+#define CTRL_KEY(k) ((k) & 0x1F)
 
-void enableRawMode() {
-  tcgetattr(STDIN_FILENO, &orig_termios);
-  atexit(disableRawMode); // disable at exit
-
-  struct termios raw = orig_termios;
-  raw.c_iflag &= ~(IXON | ICRNL | BRKINT | INPCK | ISTRIP);
-  raw.c_oflag &= ~(OPOST);
-  raw.c_cflag &= (CS8);
-  raw.c_lflag &= ~(ECHO | ICANON | ISIG | IEXTEN); // disable canon input
-  tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
-}
-
+/*** MAIN ENTRY ***/
 int main() {
   enableRawMode(); // makes sure that what we type is not printed to term
 
-  char c;
-  while (read(STDIN_FILENO, &c, 1) == 1) {
-    if (c == 'q') {
-      break;
-    } else if (iscntrl(c)) {
+  while (1) {
+    char c = '\0';
+    if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN) {
+      die("read at entry");
+    }
+
+    if (iscntrl(c)) {
       printf("%d\r\n", c);
     } else {
       printf("%d - (%c)\r\n", c, c);
     }
+
+    if (c == CTRL_KEY('q')) {
+      break;
+    } 
   }
   return 0;
 }
